@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #FBF9F4;
+  color: #1B2B26;
+}
+
+/* Mixed-direction content: let the browser's bidi algorithm run per
+   character instead of forcing the whole block one way. Combined with
+   dir="auto" on the element and lang hints, this is what actually makes
+   Arabic-inside-English (and vice versa) render correctly, rather than a
+   blanket text-align: right. */
+.bidi-auto {
+  unicode-bidi: plain-text;
+}
+
+.rtl-text {
+  direction: rtl;
+  font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+  line-height: 2;
+}
+
+.ltr-text {
+  direction: ltr;
+}
+
+/* Focus visibility kept intentionally strong - real exams, real stakes. */
+:focus-visible {
+  outline: 2px solid #C4933A;
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #D6E7E0; border-radius: 8px; }
