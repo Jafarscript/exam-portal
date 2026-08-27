@@ -134,7 +134,7 @@ export default function Navbar() {
 
         {/* Mobile Horizontal Scrollable Quick Bar (when menu closed) */}
         {user && !mobileMenuOpen && (
-          <div className="lg:hidden flex gap-1 overflow-x-auto pb-2.5 pt-0.5 no-scrollbar -mx-1 px-1 border-t border-primary-800/40">
+          <div className="md:hidden flex gap-1 overflow-x-auto pb-2.5 pt-0.5 no-scrollbar -mx-1 px-1 border-t border-primary-800/40">
             {links.map(([href, label]) => {
               const active = isActive(href);
               return (
