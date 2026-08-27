@@ -24,8 +24,8 @@ export default function EditExam() {
     apiFetch('/api/teacher/subjects').then((d) => setSubjects(d.subjects.filter((s) => s.isActive)));
     apiFetch(`/api/exams/${id}`).then((d) => {
       const exam = d.exam;
-      if (exam.status !== 'DRAFT') {
-        push('Only draft exams can be edited', 'error');
+      if (exam.status !== 'DRAFT' && exam.status !== 'CLOSED') {
+        push('Only draft or closed exams can be edited', 'error');
         router.replace(`/teacher/exams/${id}`);
         return;
       }

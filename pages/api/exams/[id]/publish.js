@@ -8,7 +8,17 @@ export default withAuth(async function handler(req, res) {
   await dbConnect();
   const exam = await Exam.findById(req.query.id);
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
-  if (exam.status !== 'DRAFT') return res.status(400).json({ error: 'Only draft exams can be published' });
+  if (exam.status !== 'DRAFT' && exam.status !== 'CLOSED') {
+    return res.status(400).json({ error: 'Only draft or closed exams can be published' });
+  }
+
+  const { deadline } = req.body || {};
+  if (deadline) {
+    exam.deadline = new Date(deadline);
+  } else if (new Date(exam.deadline) <= new Date()) {
+    // If deadline is in the past, push it out 24 hours
+    exam.deadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
 
   const questionCount = await Question.countDocuments({ examId: exam._id });
   if (questionCount === 0) return res.status(400).json({ error: 'Add at least one question before publishing' });

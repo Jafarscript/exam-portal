@@ -7,6 +7,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { useRequireRole } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { apiFetch } from '@/lib/apiClient';
+import { toLocalDatetimeLocal } from '@/lib/deadlineFormat';
 
 export default function ExamDetail() {
   const user = useRequireRole(['TEACHER']);
@@ -17,6 +18,9 @@ export default function ExamDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [reopenDeadline, setReopenDeadline] = useState('');
+  const [isReopening, setIsReopening] = useState(false);
 
   const [poolSize, setPoolSize] = useState('');
   const [poolSaving, setPoolSaving] = useState(false);
@@ -141,6 +145,36 @@ export default function ExamDetail() {
     }
   };
 
+  const handleReopen = async (e) => {
+    if (e) e.preventDefault();
+    setIsReopening(true);
+    try {
+      await apiFetch(`/api/exams/${id}/reopen`, {
+        method: 'POST',
+        body: {
+          deadline: reopenDeadline || undefined,
+        },
+      });
+      push('Exam successfully reopened and is now available for students', 'success');
+      setShowReopenDialog(false);
+      load();
+      loadLiveData();
+    } catch (err) {
+      push(err.message, 'error');
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
+  const openReopenModal = () => {
+    // If deadline has already passed, pre-set deadline to 24 hours from now; otherwise keep existing deadline
+    const currentDeadlineTime = new Date(exam.deadline).getTime();
+    const isPast = isNaN(currentDeadlineTime) || currentDeadlineTime <= Date.now();
+    const targetDate = isPast ? new Date(Date.now() + 24 * 60 * 60 * 1000) : new Date(exam.deadline);
+    setReopenDeadline(toLocalDatetimeLocal(targetDate));
+    setShowReopenDialog(true);
+  };
+
   const remove = async () => {
     try {
       await apiFetch(`/api/exams/${id}`, { method: 'DELETE' });
@@ -201,6 +235,25 @@ export default function ExamDetail() {
         </div>
       </dl>
 
+      {/* CLOSED EXAM ALERT BANNER */}
+      {exam.status === 'CLOSED' && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔒</span>
+            <div>
+              <p className="text-sm font-bold text-red-900">This exam is currently closed</p>
+              <p className="text-xs text-red-700">Students cannot enter or start new attempts. You can reopen it at any time to make it available again.</p>
+            </div>
+          </div>
+          <button
+            onClick={openReopenModal}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5"
+          >
+            ↻ Reopen Exam
+          </button>
+        </div>
+      )}
+
       {/* Navigation Buttons */}
       <div className="flex flex-wrap gap-3 mb-8">
         <Link href={`/teacher/exams/${id}/questions`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
@@ -220,6 +273,16 @@ export default function ExamDetail() {
         )}
         {exam.status === 'PUBLISHED' && (
           <button onClick={() => setConfirmClose(true)} className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium">Close exam</button>
+        )}
+        {exam.status === 'CLOSED' && (
+          <>
+            <button onClick={openReopenModal} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm">
+              ↻ Reopen exam
+            </button>
+            <Link href={`/teacher/exams/${id}/edit`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
+              Edit details
+            </Link>
+          </>
         )}
       </div>
 
@@ -392,6 +455,92 @@ export default function ExamDetail() {
       <ConfirmDialog open={confirmPublish} title="Publish exam?" message="Students in the assigned class will be able to enter the waiting room for this exam." confirmLabel="Publish" onCancel={() => setConfirmPublish(false)} onConfirm={() => { setConfirmPublish(false); publish(); }} />
       <ConfirmDialog open={confirmClose} title="Close exam?" message="Students will no longer be able to start this exam. In-progress attempts are unaffected." confirmLabel="Close" danger onCancel={() => setConfirmClose(false)} onConfirm={() => { setConfirmClose(false); close(); }} />
       <ConfirmDialog open={confirmDelete} title="Delete exam?" message="This permanently removes the exam and its questions." confirmLabel="Delete" danger onCancel={() => setConfirmDelete(false)} onConfirm={() => { setConfirmDelete(false); remove(); }} />
+
+      {/* REOPEN EXAM MODAL DIALOG */}
+      {showReopenDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-primary-100 space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">
+                  ↻
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-semibold text-primary-900">Reopen Exam</h3>
+                  <p className="text-xs text-ink/50">Make this exam available for students again</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReopenDialog(false)}
+                className="text-ink/40 hover:text-ink text-xl font-bold px-2"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="text-sm text-ink/70 leading-relaxed">
+              Reopening will switch this exam back to <span className="font-semibold text-primary-700">PUBLISHED</span> status. Students in <span className="font-semibold text-ink">{exam.classId?.name}</span> will be able to enter the exam room and submit their answers.
+            </p>
+
+            <form onSubmit={handleReopen} className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-ink/70 uppercase mb-1.5">
+                  Exam Deadline (Your local time)
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={reopenDeadline}
+                  onChange={(e) => setReopenDeadline(e.target.value)}
+                  className="w-full border border-primary-200 rounded-lg px-3 py-2 text-sm text-ink font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-ink/40">Quick extend:</span>
+                  <button
+                    type="button"
+                    onClick={() => setReopenDeadline(toLocalDatetimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)))}
+                    className="text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 px-2.5 py-1 rounded-md font-medium border border-primary-200"
+                  >
+                    +24 Hours
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReopenDeadline(toLocalDatetimeLocal(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)))}
+                    className="text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 px-2.5 py-1 rounded-md font-medium border border-primary-200"
+                  >
+                    +3 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReopenDeadline(toLocalDatetimeLocal(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)))}
+                    className="text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 px-2.5 py-1 rounded-md font-medium border border-primary-200"
+                  >
+                    +1 Week
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-primary-50">
+                <button
+                  type="button"
+                  onClick={() => setShowReopenDialog(false)}
+                  disabled={isReopening}
+                  className="px-4 py-2 text-sm font-medium text-ink/60 hover:text-ink rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isReopening}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isReopening ? 'Reopening…' : 'Confirm & Reopen Exam'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

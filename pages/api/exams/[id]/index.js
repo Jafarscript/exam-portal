@@ -19,8 +19,8 @@ export default withAuth(async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
-    if (exam.status !== 'DRAFT') {
-      return res.status(400).json({ error: 'Only draft exams can be edited' });
+    if (exam.status !== 'DRAFT' && exam.status !== 'CLOSED') {
+      return res.status(400).json({ error: 'Only draft or closed exams can be edited' });
     }
     const fields = ['title', 'description', 'subjectId', 'classId', 'duration', 'isTimed', 'deadline', 'passMark', 'randomizeQuestions', 'randomizeAnswers', 'questionsToShow', 'requiresLiveApproval'];
     fields.forEach((f) => {
