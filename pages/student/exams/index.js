@@ -19,7 +19,29 @@ export default function StudentExams() {
   const [exams, setExams] = useState(null);
 
   useEffect(() => {
-    if (user) apiFetch('/api/student/exams').then((d) => setExams(d.exams));
+    if (!user) return;
+    // Load from local storage first if available for instant/offline display
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('cached_student_exams');
+        if (cached) {
+          setExams(JSON.parse(cached));
+        }
+      } catch (e) {}
+    }
+
+    apiFetch('/api/student/exams')
+      .then((d) => {
+        setExams(d.exams);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('cached_student_exams', JSON.stringify(d.exams));
+          } catch (e) {}
+        }
+      })
+      .catch((e) => {
+        console.warn('Could not fetch exams from server:', e.message);
+      });
   }, [user]);
 
   if (!user) return null;

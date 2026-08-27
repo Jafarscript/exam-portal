@@ -9,7 +9,17 @@ import QuestionRenderer from '@/components/QuestionRenderer';
 import { useRequireRole } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { useAutosave } from '@/hooks/useAutosave';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { apiFetch } from '@/lib/apiClient';
+import {
+  cacheExamSessionOffline,
+  getExamSessionOffline,
+  getAllOfflineAnswers,
+  savePendingSubmission,
+  getPendingSubmission,
+  clearPendingSubmission,
+} from '@/lib/offlineStorage';
+import { RefreshCw, WifiOff } from 'lucide-react';
 
 function isAnswered(question, value) {
   if (value === null || value === undefined) return false;
@@ -22,6 +32,7 @@ export default function TakeExam() {
   const router = useRouter();
   const { id } = router.query; // examId
   const { push } = useToast();
+  const { isOnline } = useOnlineStatus();
 
   const [attemptId, setAttemptId] = useState(null);
   const [exam, setExam] = useState(null);
@@ -33,25 +44,59 @@ export default function TakeExam() {
   const [submitting, setSubmitting] = useState(false);
   const submittedRef = useRef(false);
 
-  const { status: saveStatus, save, flush } = useAutosave(attemptId);
-
+  const { status: saveStatus, save, flush, syncQueue, pendingCount } = useAutosave(attemptId);
   const [proctorStatus, setProctorStatus] = useState(null);
 
   const loadAttempt = useCallback(async (aid) => {
-    const data = await apiFetch(`/api/attempts/${aid}`);
-    setExam(data.exam);
-    setAttempt(data.attempt);
-    setProctorStatus(data.attempt.proctorStatus || 'ADMITTED');
-    if (data.questions && data.questions.length > 0) {
-      setQuestions(data.questions);
-      const initialAnswers = {};
-      data.questions.forEach((q) => { initialAnswers[q.id] = q.studentAnswer; });
-      setAnswers(initialAnswers);
+    try {
+      const data = await apiFetch(`/api/attempts/${aid}`);
+      setExam(data.exam);
+      setAttempt(data.attempt);
+      setProctorStatus(data.attempt.proctorStatus || 'ADMITTED');
+
+      if (data.questions && data.questions.length > 0) {
+        setQuestions(data.questions);
+        const mergedAnswers = {};
+        // 1. Initial answers from server
+        data.questions.forEach((q) => { mergedAnswers[q.id] = q.studentAnswer; });
+        // 2. Overlay any recent un-synced offline local answers
+        const offlineLocal = getAllOfflineAnswers(aid);
+        Object.keys(offlineLocal).forEach((qid) => {
+          if (offlineLocal[qid] !== undefined) {
+            mergedAnswers[qid] = offlineLocal[qid];
+          }
+        });
+        setAnswers(mergedAnswers);
+
+        // Cache session for offline fallback
+        await cacheExamSessionOffline(aid, {
+          exam: data.exam,
+          attempt: data.attempt,
+          questions: data.questions,
+          answers: mergedAnswers,
+        });
+      }
+
+      if (data.attempt.status !== 'IN_PROGRESS') {
+        router.replace('/student/exams');
+      }
+    } catch (err) {
+      console.warn('Network loadAttempt failed, attempting offline cache recovery:', err.message);
+      const cached = await getExamSessionOffline(aid);
+      if (cached && cached.exam && cached.questions) {
+        setExam(cached.exam);
+        setAttempt(cached.attempt);
+        setProctorStatus(cached.attempt?.proctorStatus || 'ADMITTED');
+        setQuestions(cached.questions);
+        const offlineLocal = getAllOfflineAnswers(aid);
+        const initial = cached.answers || {};
+        setAnswers({ ...initial, ...offlineLocal });
+        push('Loaded exam session from offline local cache', 'info');
+      } else {
+        push(err.message || 'Could not load exam session', 'error');
+      }
     }
-    if (data.attempt.status !== 'IN_PROGRESS') {
-      router.replace('/student/exams');
-    }
-  }, [router]);
+  }, [push, router]);
 
   // Resuming / Starting
   useEffect(() => {
@@ -62,7 +107,26 @@ export default function TakeExam() {
         setProctorStatus(d.proctorStatus || 'ADMITTED');
         return loadAttempt(d.attemptId);
       })
-      .catch((err) => {
+      .catch(async (err) => {
+        // Check if there is already a cached attempt in local storage for this exam
+        if (typeof window !== 'undefined') {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('exam_session_')) {
+              const item = JSON.parse(localStorage.getItem(k) || '{}');
+              if (item.exam && String(item.exam._id || item.exam.id) === String(id)) {
+                setAttemptId(item.attemptId);
+                setExam(item.exam);
+                setAttempt(item.attempt);
+                setQuestions(item.questions);
+                const offlineLocal = getAllOfflineAnswers(item.attemptId);
+                setAnswers({ ...(item.answers || {}), ...offlineLocal });
+                push('Resumed exam from offline storage', 'info');
+                return;
+              }
+            }
+          }
+        }
         push(err.message, 'error');
         router.replace('/student/exams');
       });
@@ -70,17 +134,16 @@ export default function TakeExam() {
 
   // Polling for teacher approval if waiting
   useEffect(() => {
-    if (!attemptId || proctorStatus !== 'WAITING_APPROVAL') return;
+    if (!attemptId || proctorStatus !== 'WAITING_APPROVAL' || !isOnline) return;
     const interval = setInterval(() => {
       loadAttempt(attemptId).catch(() => {});
     }, 2500);
     return () => clearInterval(interval);
-  }, [attemptId, proctorStatus, loadAttempt]);
+  }, [attemptId, proctorStatus, isOnline, loadAttempt]);
 
-  // Integrity logging - visible-tab and fullscreen changes only, never
-  // blocking or auto-submitting.
+  // Integrity logging
   useEffect(() => {
-    if (!attemptId) return;
+    if (!attemptId || !isOnline) return;
     const onVisibility = () => {
       if (document.hidden) apiFetch(`/api/attempts/${attemptId}/integrity-event`, { method: 'POST', body: { type: 'TAB_SWITCH' } }).catch(() => {});
     };
@@ -93,29 +156,51 @@ export default function TakeExam() {
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('fullscreenchange', onFullscreen);
     };
-  }, [attemptId]);
+  }, [attemptId, isOnline]);
 
   const doSubmit = useCallback(async () => {
     if (submittedRef.current) return;
-    submittedRef.current = true;
     setSubmitting(true);
+
+    // If offline, queue submission locally
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      savePendingSubmission(attemptId);
+      push('You are currently offline. Your submission is safely recorded on this device and will automatically finalize once reconnected.', 'info');
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const result = await apiFetch(`/api/attempts/${attemptId}/submit`, { method: 'POST' });
-      push('Exam submitted', 'success');
+      submittedRef.current = true;
+      // First sync any remaining pending answers
+      await syncQueue();
+      await apiFetch(`/api/attempts/${attemptId}/submit`, { method: 'POST' });
+      clearPendingSubmission(attemptId);
+      push('Exam submitted successfully', 'success');
       router.push('/student/exams');
     } catch (err) {
       push(err.message, 'error');
       submittedRef.current = false;
       setSubmitting(false);
     }
-  }, [attemptId, push, router]);
+  }, [attemptId, push, router, syncQueue]);
+
+  // Auto-submit if student reconnected and had a pending submission
+  useEffect(() => {
+    if (isOnline && attemptId) {
+      const pendingSub = getPendingSubmission(attemptId);
+      if (pendingSub && !submittedRef.current) {
+        push('Internet reconnected — finalizing pending exam submission…', 'info');
+        doSubmit();
+      }
+    }
+  }, [isOnline, attemptId, doSubmit, push]);
 
   const handleExpire = useCallback(async () => {
     push('Time is up — submitting automatically', 'info');
-    // Flush any last pending saves before locking the attempt.
     if (questions) await Promise.all(questions.map((q) => flush(q.id)));
     doSubmit();
-  }, [doSubmit, flush, questions]);
+  }, [doSubmit, flush, questions, push]);
 
   const answeredCount = useMemo(() => {
     if (!questions) return 0;
@@ -217,11 +302,29 @@ export default function TakeExam() {
         <div className="flex-1 order-2 lg:order-1">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-ink">{exam.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-2xl font-semibold text-ink">{exam.title}</h1>
+                {!isOnline && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                    <WifiOff className="w-3 h-3" />
+                    Offline Mode
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-ink/50">{exam.subject}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <SaveStatus status={saveStatus} />
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <SaveStatus status={saveStatus} pendingCount={pendingCount} />
+              {pendingCount > 0 && isOnline && (
+                <button
+                  type="button"
+                  onClick={syncQueue}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:text-primary-900 bg-primary-50 border border-primary-200 px-2 py-1 rounded-full transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Sync now
+                </button>
+              )}
               {exam.isTimed && attempt.expiresAt && <Timer expiresAt={attempt.expiresAt} onExpire={handleExpire} />}
             </div>
           </div>
@@ -274,8 +377,12 @@ export default function TakeExam() {
       <ConfirmDialog
         open={confirmOpen}
         title="Submit exam?"
-        message={`You have answered ${answeredCount} of ${questions.length} questions. Once submitted you cannot make further changes.`}
-        confirmLabel={submitting ? 'Submitting…' : 'Submit'}
+        message={
+          !isOnline
+            ? `You have answered ${answeredCount} of ${questions.length} questions. You are currently offline, so your submission will be safely recorded on this device and automatically finalized when internet reconnects.`
+            : `You have answered ${answeredCount} of ${questions.length} questions. Once submitted you cannot make further changes.`
+        }
+        confirmLabel={submitting ? 'Submitting…' : !isOnline ? 'Save & Submit when Online' : 'Submit'}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => { setConfirmOpen(false); doSubmit(); }}
       />
