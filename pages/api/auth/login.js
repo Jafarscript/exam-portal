@@ -7,7 +7,12 @@ export default async function handler(req, res) {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
-  await dbConnect();
+  const db = await dbConnect();
+  if (!db) {
+    console.error('[AUTH LOGIN ERROR] Database not connected. Check MONGODB_URI.');
+    return res.status(500).json({ error: 'Database connection failure. Please check MONGODB_URI.' });
+  }
+
   const cleanEmail = String(email).trim().toLowerCase();
   let user = await User.findOne({ email: cleanEmail }).select('+password');
   
@@ -16,7 +21,14 @@ export default async function handler(req, res) {
     user = await User.findOne({ email: new RegExp(`^${cleanEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}$`, 'i') }).select('+password');
   }
 
-  if (!user || !(await verifyPassword(password, user.password))) {
+  if (!user) {
+    console.warn(`[AUTH LOGIN FAILED] No user document found for email: "${cleanEmail}" in database "${db.connection.name}"`);
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
+  const isPasswordValid = await verifyPassword(password, user.password);
+  if (!isPasswordValid) {
+    console.warn(`[AUTH LOGIN FAILED] Password mismatch for user: "${cleanEmail}" (Role: ${user.role}) in database "${db.connection.name}"`);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 

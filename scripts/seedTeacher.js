@@ -13,7 +13,13 @@ async function run() {
   if (!MONGODB_URI) throw new Error('MONGODB_URI is not set in .env.local');
   if (!TEACHER_EMAIL || !TEACHER_PASSWORD) throw new Error('TEACHER_EMAIL / TEACHER_PASSWORD are not set in .env.local');
 
-  await mongoose.connect(MONGODB_URI);
+  const connectOptions = {};
+  if (process.env.MONGODB_DB) {
+    connectOptions.dbName = process.env.MONGODB_DB;
+  }
+
+  const conn = await mongoose.connect(MONGODB_URI, connectOptions);
+  console.log(`Connected to database: "${conn.connection.name}"`);
 
   const UserSchema = new mongoose.Schema(
     {
