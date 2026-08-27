@@ -23,12 +23,30 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const data = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } });
+    if (data.token && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('exam_portal_token', data.token);
+      } catch {
+        // ignore
+      }
+    }
     setUser(data.user);
     return data.user;
   };
 
   const logout = async () => {
-    await apiFetch('/api/auth/logout', { method: 'POST' });
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('exam_portal_token');
+      } catch {
+        // ignore
+      }
+    }
     setUser(null);
     router.push('/login');
   };

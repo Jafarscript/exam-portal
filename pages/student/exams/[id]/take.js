@@ -35,26 +35,31 @@ export default function TakeExam() {
 
   const { status: saveStatus, save, flush } = useAutosave(attemptId);
 
+  const [proctorStatus, setProctorStatus] = useState(null);
+
   const loadAttempt = useCallback(async (aid) => {
     const data = await apiFetch(`/api/attempts/${aid}`);
     setExam(data.exam);
     setAttempt(data.attempt);
-    setQuestions(data.questions);
-    const initialAnswers = {};
-    data.questions.forEach((q) => { initialAnswers[q.id] = q.studentAnswer; });
-    setAnswers(initialAnswers);
+    setProctorStatus(data.attempt.proctorStatus || 'ADMITTED');
+    if (data.questions && data.questions.length > 0) {
+      setQuestions(data.questions);
+      const initialAnswers = {};
+      data.questions.forEach((q) => { initialAnswers[q.id] = q.studentAnswer; });
+      setAnswers(initialAnswers);
+    }
     if (data.attempt.status !== 'IN_PROGRESS') {
       router.replace('/student/exams');
     }
   }, [router]);
 
-  // Resuming: calling start again on an IN_PROGRESS attempt just returns the
-  // same attemptId without re-randomizing anything.
+  // Resuming / Starting
   useEffect(() => {
     if (!user || !id) return;
     apiFetch(`/api/exams/${id}/start`, { method: 'POST' })
       .then((d) => {
         setAttemptId(d.attemptId);
+        setProctorStatus(d.proctorStatus || 'ADMITTED');
         return loadAttempt(d.attemptId);
       })
       .catch((err) => {
@@ -62,6 +67,15 @@ export default function TakeExam() {
         router.replace('/student/exams');
       });
   }, [user, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Polling for teacher approval if waiting
+  useEffect(() => {
+    if (!attemptId || proctorStatus !== 'WAITING_APPROVAL') return;
+    const interval = setInterval(() => {
+      loadAttempt(attemptId).catch(() => {});
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [attemptId, proctorStatus, loadAttempt]);
 
   // Integrity logging - visible-tab and fullscreen changes only, never
   // blocking or auto-submitting.
@@ -108,7 +122,87 @@ export default function TakeExam() {
     return questions.filter((q) => isAnswered(q, answers[q.id])).length;
   }, [questions, answers]);
 
-  if (!user || !questions) return <Layout><Spinner label="Preparing your exam…" /></Layout>;
+  if (!user || !attempt || !exam) {
+    return (
+      <Layout>
+        <Spinner label="Loading exam session…" />
+      </Layout>
+    );
+  }
+
+  // Teacher Permission & Screen-Share Proctoring Waiting Room
+  if (proctorStatus === 'WAITING_APPROVAL') {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto my-8">
+          <div className="bg-white border-2 border-primary-200 rounded-2xl p-8 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="relative flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
+              </span>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                  Waiting for Teacher Verification
+                </span>
+              </div>
+            </div>
+
+            <h1 className="font-display text-2xl font-semibold text-primary-900 mb-2">
+              {exam.title}
+            </h1>
+            <p className="text-sm text-ink/70 mb-6">
+              Subject: <strong className="text-ink">{exam.subject}</strong> · Duration:{' '}
+              <strong className="text-ink">{exam.isTimed ? `${exam.duration} minutes` : 'Untimed'}</strong>
+            </p>
+
+            <div className="bg-primary-50/70 border border-primary-100 rounded-xl p-5 mb-6 space-y-3">
+              <h2 className="text-sm font-bold text-primary-900 uppercase tracking-wide">
+                Live Proctoring & Screen-Share Instructions
+              </h2>
+              <div className="text-sm text-ink/80 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">1</span>
+                  <p>Join your class call/meeting and <strong>share your entire device screen</strong> with your teacher.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">2</span>
+                  <p>Stay on this page. Once your teacher confirms your screen share, they will admit you.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold">3</span>
+                  <p>Your exam questions and timer will <strong>unlock automatically</strong> in real time without refreshing.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between bg-primary-50 rounded-xl px-5 py-4 border border-primary-100">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary-600 border-t-transparent"></div>
+                <p className="text-xs font-medium text-primary-900">
+                  Listening for teacher authorization...
+                </p>
+              </div>
+              <button
+                onClick={() => loadAttempt(attemptId)}
+                className="text-xs font-semibold text-primary-700 hover:text-primary-800 underline"
+              >
+                Check status now
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!questions || questions.length === 0) {
+    return (
+      <Layout>
+        <Spinner label="Preparing your questions…" />
+      </Layout>
+    );
+  }
 
   const q = questions[index];
 

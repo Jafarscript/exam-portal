@@ -17,6 +17,7 @@ const ExamSchema = new mongoose.Schema(
     // question. Selection happens once, at attempt-start, and is persisted
     // on the attempt (same as questionOrder) so it never changes on resume.
     questionsToShow: { type: Number, default: null },
+    requiresLiveApproval: { type: Boolean, default: true },
     status: { type: String, enum: ['DRAFT', 'PUBLISHED', 'CLOSED'], default: 'DRAFT' },
     publishedAt: { type: Date, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

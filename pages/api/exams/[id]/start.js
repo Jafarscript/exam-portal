@@ -67,23 +67,30 @@ export default withAuth(async function handler(req, res) {
   });
 
   const now = new Date();
-  const expiresAt = exam.isTimed ? new Date(now.getTime() + exam.duration * 60 * 1000) : null;
+  const requiresApproval = exam.requiresLiveApproval !== false;
+  const initialProctorStatus = requiresApproval ? 'WAITING_APPROVAL' : 'ADMITTED';
+  const expiresAt = (!requiresApproval && exam.isTimed) ? new Date(now.getTime() + exam.duration * 60 * 1000) : null;
 
   try {
     const attempt = await Attempt.create({
       examId: exam._id,
       studentId: student._id,
       status: 'IN_PROGRESS',
-      startedAt: now,
+      proctorStatus: initialProctorStatus,
+      startedAt: requiresApproval ? null : now,
       expiresAt,
       questionOrder: questionIds,
       answerOrder,
     });
-    return res.status(201).json({ attemptId: attempt._id, resumed: false });
+    return res.status(201).json({ attemptId: attempt._id, proctorStatus: initialProctorStatus, resumed: false });
   } catch (err) {
     // Unique (examId, studentId) index is the backend backstop against a
     // race where two "start" requests land at the same time.
     if (err.code === 11000) {
+      const ex = await Attempt.findOne({ examId: exam._id, studentId: student._id });
+      if (ex && ex.status === 'IN_PROGRESS') {
+        return res.status(200).json({ attemptId: ex._id, proctorStatus: ex.proctorStatus, resumed: true });
+      }
       return res.status(409).json({ error: 'You have already attempted this exam' });
     }
     throw err;

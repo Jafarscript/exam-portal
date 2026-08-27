@@ -9,6 +9,13 @@ const AttemptSchema = new mongoose.Schema(
       enum: ['IN_PROGRESS', 'SUBMITTED', 'PENDING_REVIEW', 'FINALIZED'],
       default: 'IN_PROGRESS',
     },
+    proctorStatus: {
+      type: String,
+      enum: ['WAITING_APPROVAL', 'ADMITTED', 'REJECTED'],
+      default: 'WAITING_APPROVAL',
+    },
+    screenShareVerified: { type: Boolean, default: false },
+    admittedAt: { type: Date, default: null },
     startedAt: { type: Date, default: Date.now },
     submittedAt: { type: Date, default: null },
     // Server-computed absolute deadline for this attempt (startedAt + duration).

@@ -26,7 +26,7 @@ export default withAuth(async function handler(req, res) {
 
   if (req.method === 'POST') {
     if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
-    const { title, description, subjectId, classId, duration, isTimed, deadline, passMark, randomizeQuestions, randomizeAnswers, questionsToShow } = req.body || {};
+    const { title, description, subjectId, classId, duration, isTimed, deadline, passMark, randomizeQuestions, randomizeAnswers, questionsToShow, requiresLiveApproval } = req.body || {};
     if (!title || !subjectId || !classId || !deadline || passMark === undefined) {
       return res.status(400).json({ error: 'title, subjectId, classId, deadline and passMark are required' });
     }
@@ -48,6 +48,7 @@ export default withAuth(async function handler(req, res) {
       randomizeQuestions: !!randomizeQuestions,
       randomizeAnswers: !!randomizeAnswers,
       questionsToShow: questionsToShow ? Number(questionsToShow) : null,
+      requiresLiveApproval: requiresLiveApproval !== undefined ? !!requiresLiveApproval : true,
       status: 'DRAFT',
       createdBy: req.user._id,
     });

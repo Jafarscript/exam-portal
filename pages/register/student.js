@@ -16,7 +16,14 @@ export default function RegisterStudent() {
     setError('');
     setLoading(true);
     try {
-      await apiFetch('/api/auth/register/student', { method: 'POST', body: form });
+      const data = await apiFetch('/api/auth/register/student', { method: 'POST', body: form });
+      if (data?.token && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('exam_portal_token', data.token);
+        } catch {
+          // ignore
+        }
+      }
       await refresh();
       router.push('/student');
     } catch (err) {

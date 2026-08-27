@@ -11,7 +11,8 @@ export default withAuth(async function handler(req, res) {
 
   const results = await Result.find({ studentId: student._id })
     .populate({ path: 'examId', select: 'title subjectId', populate: { path: 'subjectId', select: 'name' } })
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   return res.status(200).json({ results });
 }, ['STUDENT']);

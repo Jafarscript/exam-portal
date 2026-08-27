@@ -15,6 +15,7 @@ export default function CreateExam() {
     title: '', description: '', subjectId: '', classId: '',
     isTimed: true, duration: 30, deadline: '', passMark: 50,
     randomizeQuestions: false, randomizeAnswers: false, questionsToShow: '',
+    requiresLiveApproval: true,
   });
   const [saving, setSaving] = useState(false);
 
@@ -74,7 +75,7 @@ export default function CreateExam() {
           <div>
             <label className="text-sm font-medium text-ink/70">Deadline</label>
             <input type="datetime-local" required value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="w-full mt-1 border border-primary-200 rounded-lg px-3 py-2" />
-            <p className="text-xs text-ink/40 mt-1">UK time (Europe/London)</p>
+            <p className="text-xs text-ink/40 mt-1">Your local time</p>
           </div>
           <div>
             <label className="text-sm font-medium text-ink/70">Pass mark (%)</label>
@@ -102,6 +103,16 @@ export default function CreateExam() {
             </p>
           </div>
         </div>
+
+        <div className="flex flex-wrap gap-6 pt-2">
+          <label className="flex items-center gap-2 text-sm text-ink/70">
+            <input type="checkbox" checked={form.requiresLiveApproval} onChange={(e) => setForm({ ...form, requiresLiveApproval: e.target.checked })} />
+            <span className="font-semibold text-primary-900">Require Live Teacher Admittance / Screen-Share Verification</span>
+          </label>
+        </div>
+        <p className="text-xs text-ink/50">
+          When enabled, students who enter the exam are placed in a live waiting room until you verify their screen share and admit them.
+        </p>
 
         <div className="flex flex-wrap gap-6 pt-2">
           <label className="flex items-center gap-2 text-sm text-ink/70">

@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         const p = await User.findById(student.parentId);
         if (p) recipients.push(p.email);
       }
-      const deadlineStr = exam.deadline.toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' });
+      const deadlineStr = exam.deadline.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) + ' (UTC)';
       for (const to of recipients) {
         sendMail({ to, subject: 'Exam deadline reminder', html: templates.examDeadlineReminder(student.fullName, exam.title, deadlineStr) });
         sent += 1;

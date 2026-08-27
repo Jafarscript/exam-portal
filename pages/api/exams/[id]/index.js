@@ -22,7 +22,7 @@ export default withAuth(async function handler(req, res) {
     if (exam.status !== 'DRAFT') {
       return res.status(400).json({ error: 'Only draft exams can be edited' });
     }
-    const fields = ['title', 'description', 'subjectId', 'classId', 'duration', 'isTimed', 'deadline', 'passMark', 'randomizeQuestions', 'randomizeAnswers', 'questionsToShow'];
+    const fields = ['title', 'description', 'subjectId', 'classId', 'duration', 'isTimed', 'deadline', 'passMark', 'randomizeQuestions', 'randomizeAnswers', 'questionsToShow', 'requiresLiveApproval'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) exam[f] = req.body[f];
     });

@@ -14,41 +14,67 @@ export default withAuth(async function handler(req, res) {
   let attempt = await Attempt.findById(req.query.id);
   if (!attempt) return res.status(404).json({ error: 'Attempt not found' });
 
-  const student = await Student.findById(attempt.studentId);
+  const student = await Student.findById(attempt.studentId).lean();
   const owns =
     (req.user.role === 'STUDENT' && String(student.userId) === String(req.user._id)) ||
     (req.user.role === 'PARENT' && String(student.parentId) === String(req.user._id)) ||
     req.user.role === 'TEACHER';
   if (!owns) return res.status(403).json({ error: 'Not authorized' });
 
-  // Belt-and-braces auto-submit: the frontend timer normally triggers submit
-  // the moment it hits zero, but if a student closed the tab before that
-  // happened, the attempt would otherwise sit IN_PROGRESS forever. Any read
-  // of an expired attempt (by the student reopening it, or the teacher
-  // checking in) locks it in right here, server-side, before returning data.
+  // Auto-submit if expired
   if (attempt.status === 'IN_PROGRESS' && attempt.expiresAt && new Date() > new Date(attempt.expiresAt)) {
     const { attempt: updated } = await submitAttempt(attempt._id);
     attempt = updated;
   }
 
-  const exam = await Exam.findById(attempt.examId).populate('subjectId', 'name');
-  const questions = await Question.find({ examId: exam._id });
+  const [exam, questions, answers] = await Promise.all([
+    Exam.findById(attempt.examId).populate('subjectId', 'name').lean(),
+    Question.find({ examId: attempt.examId }).lean(),
+    Answer.find({ attemptId: attempt._id }).lean(),
+  ]);
+
+  const proctorStatus = attempt.proctorStatus || 'ADMITTED';
+
+  // If student is waiting for teacher admittance after screen-share check,
+  // do not expose the exam questions to client memory yet!
+  if (req.user.role === 'STUDENT' && proctorStatus === 'WAITING_APPROVAL') {
+    return res.status(200).json({
+      attempt: {
+        id: attempt._id,
+        status: attempt.status,
+        proctorStatus: 'WAITING_APPROVAL',
+        screenShareVerified: attempt.screenShareVerified || false,
+        startedAt: null,
+        expiresAt: null,
+        isExpired: false,
+      },
+      exam: {
+        id: exam._id,
+        title: exam.title,
+        description: exam.description,
+        subject: exam.subjectId?.name,
+        isTimed: exam.isTimed,
+        duration: exam.duration,
+        deadline: exam.deadline,
+        passMark: exam.passMark,
+        requiresLiveApproval: exam.requiresLiveApproval !== false,
+      },
+      questions: [],
+    });
+  }
+
   const questionsById = Object.fromEntries(questions.map((q) => [String(q._id), q]));
+  const answersByQuestion = Object.fromEntries(answers.map((a) => [String(a.questionId), a]));
 
   const isExpired = attempt.status === 'IN_PROGRESS' && attempt.expiresAt && new Date() > new Date(attempt.expiresAt);
 
-  const answers = await Answer.find({ attemptId: attempt._id });
-  const answersByQuestion = Object.fromEntries(answers.map((a) => [String(a.questionId), a]));
-
-  // Build the ordered question list using the persisted order, stripping
-  // correctAnswer for students so it never reaches the client during an
-  // in-progress attempt.
-  const orderedQuestions = attempt.questionOrder
+  // Build the ordered question list using the persisted order
+  const orderedQuestions = (attempt.questionOrder || [])
     .map((qid) => questionsById[qid])
     .filter(Boolean)
     .map((q) => {
-      const optionOrder = attempt.answerOrder[String(q._id)] || q.options.map((o) => o.id);
-      const optionsById = Object.fromEntries(q.options.map((o) => [o.id, o]));
+      const optionOrder = (attempt.answerOrder && attempt.answerOrder[String(q._id)]) || (q.options || []).map((o) => o.id);
+      const optionsById = Object.fromEntries((q.options || []).map((o) => [o.id, o]));
       const orderedOptions = optionOrder.map((oid) => optionsById[oid]).filter(Boolean);
       const base = {
         id: q._id,
@@ -77,6 +103,8 @@ export default withAuth(async function handler(req, res) {
     attempt: {
       id: attempt._id,
       status: attempt.status,
+      proctorStatus,
+      screenShareVerified: attempt.screenShareVerified || false,
       startedAt: attempt.startedAt,
       submittedAt: attempt.submittedAt,
       expiresAt: attempt.expiresAt,
@@ -91,6 +119,7 @@ export default withAuth(async function handler(req, res) {
       duration: exam.duration,
       deadline: exam.deadline,
       passMark: exam.passMark,
+      requiresLiveApproval: exam.requiresLiveApproval !== false,
     },
     questions: orderedQuestions,
   });

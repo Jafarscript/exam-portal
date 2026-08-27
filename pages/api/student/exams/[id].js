@@ -12,17 +12,20 @@ export default withAuth(async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   await dbConnect();
 
-  const student = await Student.findOne({ userId: req.user._id });
+  const student = await Student.findOne({ userId: req.user._id }).lean();
   if (!student) return res.status(404).json({ error: 'Student profile not found' });
 
-  const exam = await Exam.findById(req.query.id).populate('subjectId', 'name');
+  const [exam, attempt] = await Promise.all([
+    Exam.findById(req.query.id).populate('subjectId', 'name').lean(),
+    Attempt.findOne({ examId: req.query.id, studentId: student._id }).lean(),
+  ]);
+
   if (!exam || exam.status !== 'PUBLISHED') return res.status(404).json({ error: 'Exam not found' });
   if (String(exam.classId) !== String(student.classId)) {
     return res.status(403).json({ error: 'This exam is not assigned to your class' });
   }
 
   const bankCount = await Question.countDocuments({ examId: exam._id });
-  const attempt = await Attempt.findOne({ examId: exam._id, studentId: student._id });
 
   // Before starting: show the prospective subset size (if the exam draws a
   // random subset). Once started: show the actual count already drawn for

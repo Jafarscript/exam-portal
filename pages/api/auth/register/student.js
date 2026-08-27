@@ -36,5 +36,5 @@ export default async function handler(req, res) {
 
   const token = signToken({ userId: user._id.toString(), role: user.role, email: user.email });
   setSessionCookie(res, token);
-  return res.status(201).json({ user: { id: user._id, email: user.email, role: user.role, fullName: user.fullName } });
+  return res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role, fullName: user.fullName } });
 }

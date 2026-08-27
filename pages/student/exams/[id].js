@@ -62,7 +62,7 @@ export default function ExamIntro() {
           </div>
           <div className="col-span-2">
             <dt className="text-ink/50">Deadline</dt>
-            <dd className="font-semibold text-ink">{new Date(exam.deadline).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'full', timeStyle: 'short' })}</dd>
+            <dd className="font-semibold text-ink">{new Date(exam.deadline).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}</dd>
           </div>
         </dl>
 

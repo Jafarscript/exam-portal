@@ -35,7 +35,7 @@ export default function StudentExams() {
             <div key={exam._id} className="p-4 flex items-center justify-between gap-4">
               <div>
                 <p className="font-medium text-ink">{exam.title}</p>
-                <p className="text-xs text-ink/50">{exam.subjectId?.name} · Due {new Date(exam.deadline).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'medium', timeStyle: 'short' })}</p>
+                <p className="text-xs text-ink/50">{exam.subjectId?.name} · Due {new Date(exam.deadline).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold uppercase text-ink/50">{STATUS_LABEL[attemptStatus]}</span>
