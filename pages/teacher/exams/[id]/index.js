@@ -257,7 +257,7 @@ export default function ExamDetail() {
       {/* Navigation Buttons */}
       <div className="flex flex-wrap items-center gap-3 mb-8">
         <Link href={`/teacher/exams/${id}/questions`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
-          Manage questions ({questions?.length || 0})
+          Manage questions
         </Link>
         <Link href={`/teacher/exams/${id}/results`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
           Results & statistics
