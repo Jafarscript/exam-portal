@@ -19,9 +19,6 @@ export default withAuth(async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
-    if (exam.status !== 'DRAFT' && exam.status !== 'CLOSED') {
-      return res.status(400).json({ error: 'Only draft or closed exams can be edited' });
-    }
     const fields = ['title', 'description', 'subjectId', 'classId', 'duration', 'isTimed', 'deadline', 'passMark', 'randomizeQuestions', 'randomizeAnswers', 'questionsToShow', 'requiresLiveApproval'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) exam[f] = req.body[f];
@@ -32,13 +29,19 @@ export default withAuth(async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
-    const attemptCount = await Attempt.countDocuments({ examId: exam._id });
-    if (attemptCount > 0) {
-      return res.status(400).json({ error: 'Cannot delete an exam that already has attempts. Close it instead.' });
+    // Cascade delete all questions, attempts, answers, and results related to this exam
+    const attempts = await Attempt.find({ examId: exam._id }).select('_id');
+    const attemptIds = attempts.map((a) => a._id);
+
+    if (attemptIds.length > 0) {
+      await Answer.deleteMany({ attemptId: { $in: attemptIds } });
+      await Result.deleteMany({ examId: exam._id });
+      await Attempt.deleteMany({ examId: exam._id });
     }
+
     await Question.deleteMany({ examId: exam._id });
     await exam.deleteOne();
-    return res.status(200).json({ message: 'Exam deleted' });
+    return res.status(200).json({ message: 'Exam deleted successfully' });
   }
 
   return res.status(405).end();

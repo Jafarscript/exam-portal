@@ -50,30 +50,38 @@ export default function ExamQuestions() {
       <h1 dir="auto" className="font-display text-3xl font-semibold text-ink mb-1 bidi-auto">{exam.title}</h1>
       <p className="text-sm text-ink/50 mb-6">{questions.length} questions in the bank · {totalMarks} total marks{poolNote}</p>
 
-      {exam.status !== 'DRAFT' ? (
-        <p className="bg-gold-400/10 text-gold-500 text-sm px-4 py-3 rounded-lg mb-6">Questions can only be edited while the exam is a draft.</p>
-      ) : (
-        !editingId && (
-          <div className="mb-8">
-            {mode === 'single' ? (
-              <>
-                <QuestionEditor examId={id} onCreated={load} />
-                <button
-                  onClick={() => setMode('bulk')}
-                  className="mt-3 text-sm font-semibold text-primary-600"
-                >
-                  Import many questions from a spreadsheet instead →
-                </button>
-              </>
-            ) : (
-              <BulkQuestionImporter
-                examId={id}
-                onImported={() => { setMode('single'); load(); }}
-                onCancel={() => setMode('single')}
-              />
-            )}
-          </div>
-        )
+      {exam.status === 'PUBLISHED' && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-lg mb-6 flex items-center justify-between">
+          <span>📢 <strong>Live Exam:</strong> You can add, edit, or remove questions at any time. Updates take effect immediately.</span>
+        </div>
+      )}
+
+      {exam.status === 'CLOSED' && (
+        <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-2.5 rounded-lg mb-6 flex items-center justify-between">
+          <span>🔒 <strong>Closed Exam:</strong> You can edit questions before reopening.</span>
+        </div>
+      )}
+
+      {!editingId && (
+        <div className="mb-8">
+          {mode === 'single' ? (
+            <>
+              <QuestionEditor examId={id} onCreated={load} />
+              <button
+                onClick={() => setMode('bulk')}
+                className="mt-3 text-sm font-semibold text-primary-600 hover:text-primary-700"
+              >
+                Import many questions from a spreadsheet instead →
+              </button>
+            </>
+          ) : (
+            <BulkQuestionImporter
+              examId={id}
+              onImported={() => { setMode('single'); load(); }}
+              onCancel={() => setMode('single')}
+            />
+          )}
+        </div>
       )}
 
       <div className="space-y-3">
@@ -102,12 +110,10 @@ export default function ExamQuestions() {
                     </ul>
                   )}
                 </div>
-                {exam.status === 'DRAFT' && (
-                  <div className="flex items-center gap-3 whitespace-nowrap">
-                    <button onClick={() => setEditingId(q._id)} className="text-primary-600 text-xs font-semibold">Edit</button>
-                    <button onClick={() => removeQuestion(q._id)} className="text-red-500 text-xs font-semibold">Remove</button>
-                  </div>
-                )}
+                <div className="flex items-center gap-3 whitespace-nowrap">
+                  <button onClick={() => setEditingId(q._id)} className="text-primary-600 hover:text-primary-800 text-xs font-semibold px-2 py-1 rounded-md hover:bg-primary-50">Edit</button>
+                  <button onClick={() => removeQuestion(q._id)} className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded-md hover:bg-red-50">Remove</button>
+                </div>
               </div>
             </div>
           )

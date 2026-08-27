@@ -255,35 +255,36 @@ export default function ExamDetail() {
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
         <Link href={`/teacher/exams/${id}/questions`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
-          Manage questions
+          Manage questions ({questions?.length || 0})
         </Link>
         <Link href={`/teacher/exams/${id}/results`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
           Results & statistics
         </Link>
+        <Link href={`/teacher/exams/${id}/edit`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
+          Edit details
+        </Link>
+
         {exam.status === 'DRAFT' && (
-          <>
-            <Link href={`/teacher/exams/${id}/edit`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
-              Edit details
-            </Link>
-            <button onClick={() => setConfirmPublish(true)} className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium">Publish</button>
-            <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium">Delete</button>
-          </>
+          <button onClick={() => setConfirmPublish(true)} className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium shadow-sm">
+            Publish exam
+          </button>
         )}
         {exam.status === 'PUBLISHED' && (
-          <button onClick={() => setConfirmClose(true)} className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium">Close exam</button>
+          <button onClick={() => setConfirmClose(true)} className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium">
+            Close exam
+          </button>
         )}
         {exam.status === 'CLOSED' && (
-          <>
-            <button onClick={openReopenModal} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm">
-              ↻ Reopen exam
-            </button>
-            <Link href={`/teacher/exams/${id}/edit`} className="px-4 py-2 rounded-lg border border-primary-200 text-sm font-medium hover:bg-primary-50">
-              Edit details
-            </Link>
-          </>
+          <button onClick={openReopenModal} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm">
+            ↻ Reopen exam
+          </button>
         )}
+
+        <button onClick={() => setConfirmDelete(true)} className="px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium ml-auto">
+          Delete exam
+        </button>
       </div>
 
       {/* LIVE PROCTORING & SCREEN-SHARE ADMITTANCE MONITOR */}
@@ -454,7 +455,7 @@ export default function ExamDetail() {
 
       <ConfirmDialog open={confirmPublish} title="Publish exam?" message="Students in the assigned class will be able to enter the waiting room for this exam." confirmLabel="Publish" onCancel={() => setConfirmPublish(false)} onConfirm={() => { setConfirmPublish(false); publish(); }} />
       <ConfirmDialog open={confirmClose} title="Close exam?" message="Students will no longer be able to start this exam. In-progress attempts are unaffected." confirmLabel="Close" danger onCancel={() => setConfirmClose(false)} onConfirm={() => { setConfirmClose(false); close(); }} />
-      <ConfirmDialog open={confirmDelete} title="Delete exam?" message="This permanently removes the exam and its questions." confirmLabel="Delete" danger onCancel={() => setConfirmDelete(false)} onConfirm={() => { setConfirmDelete(false); remove(); }} />
+      <ConfirmDialog open={confirmDelete} title="Delete exam?" message="This permanently deletes this exam, all associated questions, and all student attempts and grades." confirmLabel="Delete permanently" danger onCancel={() => setConfirmDelete(false)} onConfirm={() => { setConfirmDelete(false); remove(); }} />
 
       {/* REOPEN EXAM MODAL DIALOG */}
       {showReopenDialog && (

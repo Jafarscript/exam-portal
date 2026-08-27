@@ -18,7 +18,6 @@ export default withAuth(async function handler(req, res) {
 
   if (req.method === 'POST') {
     if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
-    if (exam.status !== 'DRAFT') return res.status(400).json({ error: 'Questions can only be added while the exam is a draft' });
     const { type, text, textDirection, marks, options, correctAnswer, imageUrl, audioUrl } = req.body || {};
     if (!type || !VALID_TYPES.includes(type)) return res.status(400).json({ error: 'Invalid question type' });
     if (!text || marks === undefined) return res.status(400).json({ error: 'text and marks are required' });

@@ -15,7 +15,6 @@ export default withAuth(async function handler(req, res) {
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
   if (req.user.role !== 'TEACHER') return res.status(403).json({ error: 'Not authorized' });
   if (req.method !== 'POST') return res.status(405).end();
-  if (exam.status !== 'DRAFT') return res.status(400).json({ error: 'Questions can only be added while the exam is a draft' });
 
   const { questions } = req.body || {};
   if (!Array.isArray(questions) || questions.length === 0) {
