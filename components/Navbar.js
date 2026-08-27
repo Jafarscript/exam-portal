@@ -49,13 +49,13 @@ export default function Navbar() {
           {/* Logo / Brand */}
           <Link
             href={user ? `/${user.role.toLowerCase()}` : '/'}
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2 group flex-shrink-0"
           >
             <div className="w-8 h-8 rounded-lg bg-gold-500/20 border border-gold-500/40 flex items-center justify-center text-gold-400 group-hover:bg-gold-500/30 transition">
               <Sparkles className="w-4 h-4 text-gold-400" />
             </div>
             <div className="flex flex-col">
-              <span className="font-display text-lg sm:text-xl font-bold tracking-wide text-white leading-tight">
+              <span className="font-display text-base sm:text-xl font-bold tracking-wide text-white leading-tight">
                 Al-Huda
               </span>
               <span className="text-[10px] text-primary-200 uppercase tracking-wider font-semibold">
@@ -64,16 +64,16 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation (Changed from lg:flex to xl:flex) */}
           {user && (
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden xl:flex items-center gap-1 mx-4 overflow-hidden">
               {links.map(([href, label]) => {
                 const active = isActive(href);
                 return (
                   <Link
                     key={href}
                     href={href}
-                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
                       active
                         ? 'bg-primary-800 text-white shadow-inner font-semibold border border-primary-700'
                         : 'text-primary-100/80 hover:text-white hover:bg-primary-800/60'
@@ -87,12 +87,12 @@ export default function Navbar() {
           )}
 
           {/* User Profile & Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {user ? (
               <>
                 <div className="hidden sm:flex items-center gap-2 text-xs py-1 px-2.5 rounded-lg bg-primary-800/80 border border-primary-700/50">
                   <User className="w-3.5 h-3.5 text-primary-300" />
-                  <span className="font-medium text-cream truncate max-w-[130px]">
+                  <span className="font-medium text-cream truncate max-w-[90px] md:max-w-[130px]">
                     {user.fullName}
                   </span>
                   <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-primary-700 text-gold-300">
@@ -109,12 +109,12 @@ export default function Navbar() {
                   <span>Log out</span>
                 </button>
 
-                {/* Mobile Menu Toggle Button */}
+                {/* Mobile Menu Toggle Button (Changed from lg:hidden to xl:hidden) */}
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                   aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                  className="lg:hidden p-2 rounded-lg text-primary-200 hover:text-white hover:bg-primary-800 transition"
+                  className="xl:hidden p-2 rounded-lg text-primary-200 hover:text-white hover:bg-primary-800 transition"
                 >
                   {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
@@ -132,9 +132,9 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Horizontal Scrollable Quick Bar (when menu closed) */}
+        {/* Mobile Horizontal Scrollable Quick Bar (Changed from md:hidden to xl:hidden) */}
         {user && !mobileMenuOpen && (
-          <div className="md:hidden flex gap-1 overflow-x-auto pb-2.5 pt-0.5 no-scrollbar -mx-1 px-1 border-t border-primary-800/40">
+          <div className="xl:hidden flex gap-1 overflow-x-auto pb-2.5 pt-0.5 no-scrollbar -mx-1 px-1 border-t border-primary-800/40">
             {links.map(([href, label]) => {
               const active = isActive(href);
               return (
@@ -154,9 +154,9 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Mobile Full Dropdown Menu (when open) */}
+        {/* Mobile Full Dropdown Menu (Changed from lg:hidden to xl:hidden) */}
         {user && mobileMenuOpen && (
-          <div className="lg:hidden pt-2 pb-4 border-t border-primary-800 animate-fadeIn">
+          <div className="xl:hidden pt-2 pb-4 border-t border-primary-800 animate-fadeIn">
             {/* User Details in Mobile Drawer */}
             <div className="flex items-center justify-between p-3 mb-3 bg-primary-800/80 rounded-xl border border-primary-700/60">
               <div className="flex items-center gap-2.5">
@@ -200,7 +200,7 @@ export default function Navbar() {
                 setMobileMenuOpen(false);
                 logout();
               }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition"
+              className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg text-xs font-semibold bg-red-950/40 hover:bg-red-900/60 text-red-200 border border-red-900/40 transition"
             >
               <LogOut className="w-4 h-4" />
               <span>Log out</span>
