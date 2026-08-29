@@ -64,16 +64,34 @@ export default function ExamQuestions() {
 
       {!editingId && (
         <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => setMode('single')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                mode === 'single'
+                  ? 'bg-primary-700 text-white shadow-xs'
+                  : 'bg-white text-ink/70 hover:bg-primary-50 border border-primary-100'
+              }`}
+            >
+              ✍️ Add Single Question
+            </button>
+            <button
+              onClick={() => setMode('bulk')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 ${
+                mode === 'bulk'
+                  ? 'bg-primary-700 text-white shadow-xs'
+                  : 'bg-white text-primary-700 hover:bg-primary-50 border border-primary-200'
+              }`}
+            >
+              <span>📋 Bulk Import (Word / Text / CSV)</span>
+              <span className="text-[10px] bg-gold-400/20 text-gold-700 font-bold px-1.5 py-0.5 rounded-full border border-gold-300">
+                New
+              </span>
+            </button>
+          </div>
+
           {mode === 'single' ? (
-            <>
-              <QuestionEditor examId={id} onCreated={load} />
-              <button
-                onClick={() => setMode('bulk')}
-                className="mt-3 text-sm font-semibold text-primary-600 hover:text-primary-700"
-              >
-                Import many questions from a spreadsheet instead →
-              </button>
-            </>
+            <QuestionEditor examId={id} onCreated={load} />
           ) : (
             <BulkQuestionImporter
               examId={id}
