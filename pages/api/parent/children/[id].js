@@ -9,7 +9,7 @@ export default withAuth(async function handler(req, res) {
 
   // Ownership check on every method - a parent must never be able to read or
   // edit a child that belongs to a different parent, even by guessing an id.
-  const child = await Student.findOne({ _id: id, parentId: user._id });
+  const child = await Student.findOne({ _id: id, parentId: user._id }).populate('classId', 'name');
   if (!child) return res.status(404).json({ error: 'Child not found' });
 
   if (req.method === 'GET') return res.status(200).json({ child });

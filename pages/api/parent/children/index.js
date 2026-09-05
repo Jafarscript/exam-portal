@@ -7,7 +7,10 @@ export default withAuth(async function handler(req, res) {
   const { user } = req;
 
   if (req.method === 'GET') {
-    const children = await Student.find({ parentId: user._id }).populate('classId', 'name').sort({ createdAt: 1 });
+    const children = await Student.find({ parentId: user._id, isActive: true })
+      .populate('classId', 'name')
+      .populate('userId', 'email fullName')
+      .sort({ createdAt: 1 });
     return res.status(200).json({ children });
   }
 

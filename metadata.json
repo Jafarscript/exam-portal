@@ -1,6 +1,6 @@
 {
   "name": "Exam Portal",
-  "description": "Online examination and assessment portal for teachers, students, and parents",
+  "description": "Online examination, assessment, and academic report card portal for teachers, students, and parents",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

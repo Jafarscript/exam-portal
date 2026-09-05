@@ -4,14 +4,16 @@ import Spinner from '@/components/Spinner';
 import { useRequireRole } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { apiFetch } from '@/lib/apiClient';
-import { Users, Plus, AlertCircle, Trash2, UserPlus, GraduationCap } from 'lucide-react';
+import { Users, Plus, AlertCircle, Trash2, UserPlus, GraduationCap, Award } from 'lucide-react';
+import Link from 'next/link';
 
 export default function TeacherStudents() {
   const user = useRequireRole(['TEACHER']);
   const { push } = useToast();
   const [students, setStudents] = useState(null);
   const [classes, setClasses] = useState([]);
-  const [form, setForm] = useState({ fullName: '', classId: '', createAccount: false, email: '', password: '' });
+  const [parents, setParents] = useState([]);
+  const [form, setForm] = useState({ fullName: '', classId: '', parentId: '', createAccount: false, email: '', password: '' });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -21,6 +23,7 @@ export default function TeacherStudents() {
     if (user) {
       load();
       apiFetch('/api/teacher/classes').then((d) => setClasses((d.classes || []).filter((c) => c.isActive)));
+      apiFetch('/api/teacher/parents').then((d) => setParents(d.parents || []));
     }
   }, [user]);
 
@@ -62,7 +65,7 @@ export default function TeacherStudents() {
     setSaving(true);
     try {
       await apiFetch('/api/teacher/students', { method: 'POST', body: form });
-      setForm({ fullName: '', classId: '', createAccount: false, email: '', password: '' });
+      setForm({ fullName: '', classId: '', parentId: '', createAccount: false, email: '', password: '' });
       setErrors({});
       push('Student registered successfully', 'success');
       load();
@@ -80,6 +83,19 @@ export default function TeacherStudents() {
       load();
     } catch (err) {
       push(err.message, 'error');
+    }
+  };
+
+  const saveParent = async (studentId, parentId) => {
+    try {
+      await apiFetch(`/api/teacher/students/${studentId}`, {
+        method: 'PATCH',
+        body: { parentId: parentId || null },
+      });
+      push('Student parent matching updated', 'success');
+      load();
+    } catch (err) {
+      push(err.message || 'Failed to update parent matching', 'error');
     }
   };
 
@@ -115,7 +131,7 @@ export default function TeacherStudents() {
             <UserPlus className="w-4 h-4 text-primary-600" /> Enroll a new student
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="student-name-input" className="text-xs sm:text-sm font-medium text-ink/70">
                 Full Name <span className="text-red-500">*</span>
@@ -149,6 +165,25 @@ export default function TeacherStudents() {
                 <option value="">No class yet (unassigned)</option>
                 {classes.map((c) => (
                   <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="student-parent-input" className="text-xs sm:text-sm font-medium text-ink/70">
+                Match to Parent (Optional)
+              </label>
+              <select
+                id="student-parent-input"
+                value={form.parentId}
+                onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+                className="w-full mt-1 border border-primary-200 rounded-lg px-3.5 py-2 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">No parent assigned (Unlinked)</option>
+                {parents.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.fullName} ({p.email})
+                  </option>
                 ))}
               </select>
             </div>
@@ -231,28 +266,53 @@ export default function TeacherStudents() {
             ) : (
               <div className="divide-y divide-primary-50">
                 {students.map((s) => (
-                  <div key={s._id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-primary-50/30 transition">
+                  <div key={s._id} className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:bg-primary-50/30 transition">
                     <div>
                       <p className="font-semibold text-sm sm:text-base text-ink">{s.fullName}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                           s.isIndependent ? 'bg-primary-100 text-primary-800' : 'bg-gold-500/10 text-gold-700'
                         }`}>
                           {s.isIndependent ? 'Independent Account' : 'Parent Managed'}
                         </span>
-                        {s.parentId && (
-                          <span className="text-xs text-ink/50">Parent: {s.parentId.fullName}</span>
+                        {s.userId?.email && (
+                          <span className="text-xs text-primary-700 font-mono">({s.userId.email})</span>
+                        )}
+                        {s.parentId ? (
+                          <span className="text-xs text-ink/60 font-medium">
+                            Parent: <strong className="text-ink/80">{s.parentId.fullName || s.parentId.email}</strong>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-amber-700/70 italic">No parent linked</span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+                    <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
+                      {/* Parent Selector */}
+                      <div className="flex items-center gap-1.5" title="Match or change parent">
+                        <Users className="w-4 h-4 text-ink/40" />
+                        <select
+                          value={s.parentId?._id || s.parentId || ''}
+                          onChange={(e) => saveParent(s._id, e.target.value)}
+                          className="border border-primary-200 rounded-lg px-2.5 py-1.5 text-xs bg-white text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 max-w-[190px]"
+                        >
+                          <option value="">No parent linked</option>
+                          {parents.map((p) => (
+                            <option key={p._id} value={p._id}>
+                              Parent: {p.fullName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Class Selector */}
                       <div className="flex items-center gap-1.5">
                         <GraduationCap className="w-4 h-4 text-ink/40" />
                         <select
                           defaultValue={s.classId?._id || s.classId || ''}
                           onChange={(e) => saveClass(s._id, e.target.value)}
-                          className="border border-primary-200 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="border border-primary-200 rounded-lg px-2.5 py-1.5 text-xs bg-white text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                           <option value="">No class assigned</option>
                           {classes.map((c) => (
@@ -260,6 +320,18 @@ export default function TeacherStudents() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Report Card Button */}
+                      <Link
+                        href={`/teacher/report-cards`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 text-primary-800 hover:bg-primary-100 border border-primary-200 text-xs font-semibold transition"
+                        title="View academic report card"
+                      >
+                        <Award className="w-3.5 h-3.5 text-primary-600" />
+                        <span>Report Card</span>
+                      </Link>
+
+                      {/* Remove Button */}
                       <button
                         onClick={() => remove(s._id, s.fullName)}
                         className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"

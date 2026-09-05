@@ -4,7 +4,7 @@ import { apiFetch } from '@/lib/apiClient';
 import { ArrowLeft, AlertCircle, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function RegisterParent() {
-  const [form, setForm] = useState({ fullName: '', email: '', password: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', phoneNumber: '', childrenNote: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
@@ -180,6 +180,37 @@ export default function RegisterParent() {
               </button>
             </div>
             {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="parent-phone" className="text-xs sm:text-sm font-medium text-ink/70">
+              Phone Number <span className="text-ink/40 font-normal">(Optional)</span>
+            </label>
+            <input
+              id="parent-phone"
+              type="tel"
+              placeholder="+1 234 567 8900"
+              value={form.phoneNumber}
+              onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+              className="w-full mt-1 border border-primary-200 rounded-lg px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="p-3.5 bg-primary-50/50 rounded-xl border border-primary-100">
+            <label htmlFor="parent-children-note" className="text-xs sm:text-sm font-semibold text-primary-900 block">
+              Children Details / Independent Students <span className="text-ink/40 font-normal text-xs">(Optional)</span>
+            </label>
+            <p className="text-xs text-ink/60 mt-0.5 mb-2 leading-relaxed">
+              Tell the teacher which child or children belong to you. If your child already registered as an independent student, provide their name or email so the teacher can match their account to you.
+            </p>
+            <textarea
+              id="parent-children-note"
+              rows={2}
+              placeholder="e.g. Zaid Ali (independent student account: zaid@email.com) and Maryam Ali (Class 2)"
+              value={form.childrenNote}
+              onChange={(e) => setForm({ ...form, childrenNote: e.target.value })}
+              className="w-full border border-primary-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
 
           <button

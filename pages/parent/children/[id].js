@@ -3,21 +3,24 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import Spinner from '@/components/Spinner';
 import EmptyState from '@/components/EmptyState';
+import ReportCardView from '@/components/ReportCardView';
 import { useRequireRole } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { apiFetch } from '@/lib/apiClient';
 
-const TABS = ['Profile', 'Exams', 'Results', 'History'];
+const TABS = ['Report Card', 'Results', 'Exams', 'History', 'Profile'];
 
 export default function ChildDetail() {
   const user = useRequireRole(['PARENT']);
   const router = useRouter();
   const { id } = router.query;
   const { push } = useToast();
-  const [tab, setTab] = useState('Profile');
+  const [tab, setTab] = useState('Report Card');
   const [child, setChild] = useState(null);
+  const [reportCard, setReportCard] = useState(null);
   const [results, setResults] = useState(null);
   const [history, setHistory] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [form, setForm] = useState({ fullName: '' });
 
   useEffect(() => {
@@ -31,6 +34,13 @@ export default function ChildDetail() {
 
   useEffect(() => {
     if (!id) return;
+    if (tab === 'Report Card') {
+      setLoadingReport(true);
+      apiFetch(`/api/parent/report-card?studentId=${id}`)
+        .then((d) => setReportCard(d.reportCard))
+        .catch(console.error)
+        .finally(() => setLoadingReport(false));
+    }
     if (tab === 'Results') apiFetch(`/api/parent/results?studentId=${id}`).then((d) => setResults(d.results));
     if (tab === 'History') apiFetch(`/api/parent/history?studentId=${id}`).then((d) => setHistory(d.attempts));
   }, [tab, id]);
@@ -50,7 +60,18 @@ export default function ChildDetail() {
 
   return (
     <Layout>
-      <h1 className="font-display text-3xl font-semibold text-primary-800 mb-1">{child.fullName}</h1>
+      <div className="flex items-center gap-3 mb-1 flex-wrap">
+        <h1 className="font-display text-3xl font-semibold text-primary-800">{child.fullName}</h1>
+        {child.isIndependent ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+            Independent Student Account
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gold-500/15 text-gold-800">
+            Parent-Managed Profile
+          </span>
+        )}
+      </div>
       <p className="text-sm text-ink/50 mb-6">{child.classId?.name || 'No class assigned yet'}</p>
 
       <div className="flex gap-1 border-b border-primary-100 mb-6">
@@ -60,6 +81,21 @@ export default function ChildDetail() {
           </button>
         ))}
       </div>
+
+      {tab === 'Report Card' && (
+        <>
+          {loadingReport && <Spinner label="Loading official report card…" />}
+          {!loadingReport && !reportCard && (
+            <EmptyState
+              title="Report card not available yet"
+              message="Results and teacher appraisals will be aggregated here once exams are completed."
+            />
+          )}
+          {!loadingReport && reportCard && (
+            <ReportCardView reportCard={reportCard} role="PARENT" canEditRemarks={false} />
+          )}
+        </>
+      )}
 
       {tab === 'Profile' && (
         <form onSubmit={saveProfile} className="max-w-sm bg-white border border-primary-100 rounded-xl p-5 space-y-4">
@@ -72,7 +108,16 @@ export default function ChildDetail() {
       )}
 
       {tab === 'Exams' && (
-        <p className="text-sm text-ink/60">Exams are taken from the child's own login. This tab is informational only — {child.fullName} needs their own device access to sit an exam.</p>
+        <div className="bg-primary-50/60 border border-primary-100 rounded-xl p-5 text-sm text-ink/80 max-w-xl">
+          <p className="font-semibold text-primary-900 mb-1">
+            {child.isIndependent ? 'Independent Student Portal' : 'Student Exam Access'}
+          </p>
+          <p className="text-xs sm:text-sm text-ink/70 leading-relaxed">
+            {child.isIndependent
+              ? `${child.fullName} has an independent student login and takes exams directly from their device. As their parent, you can view all completed exams, scores, and review statuses in the Results and History tabs.`
+              : `Exams are taken using the student's credentials. ${child.fullName} can sit assigned exams on their device, and scores will appear in the Results tab once completed.`}
+          </p>
+        </div>
       )}
 
       {tab === 'Results' && (

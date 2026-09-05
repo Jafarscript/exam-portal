@@ -11,6 +11,7 @@ const NAV = {
     ['/teacher/grading', 'Grading'],
     ['/teacher/statistics', 'Statistics'],
     ['/teacher/students', 'Students'],
+    ['/teacher/report-cards', 'Report Cards'],
     ['/teacher/parents', 'Parents'],
     ['/teacher/classes', 'Classes'],
     ['/teacher/subjects', 'Subjects'],
@@ -18,12 +19,14 @@ const NAV = {
   PARENT: [
     ['/parent', 'Overview'],
     ['/parent/children', 'Children'],
+    ['/parent/report-card', 'Report Card'],
     ['/parent/results', 'Results'],
     ['/parent/history', 'History'],
   ],
   STUDENT: [
     ['/student', 'Overview'],
     ['/student/exams', 'My Exams'],
+    ['/student/report-card', 'Report Card'],
     ['/student/results', 'Results'],
     ['/student/history', 'History'],
   ],

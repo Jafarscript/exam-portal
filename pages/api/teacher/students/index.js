@@ -11,14 +11,18 @@ export default withAuth(async function handler(req, res) {
     const { classId } = req.query;
     const filter = { isActive: true };
     if (classId) filter.classId = classId;
-    const students = await Student.find(filter).populate('classId', 'name').sort({ fullName: 1 });
+    const students = await Student.find(filter)
+      .populate('classId', 'name')
+      .populate('parentId', 'fullName email status')
+      .populate('userId', 'email fullName')
+      .sort({ fullName: 1 });
     return res.status(200).json({ students });
   }
 
   if (req.method === 'POST') {
     // Teacher can add either a plain child profile (no login), or a full
-    // independent-student account (email+password) in one step.
-    const { fullName, classId, dateOfBirth, createAccount, email, password } = req.body || {};
+    // independent-student account (email+password) in one step, and optionally assign a parent.
+    const { fullName, classId, dateOfBirth, createAccount, email, password, parentId } = req.body || {};
     if (!fullName) return res.status(400).json({ error: 'fullName is required' });
 
     let userId = null;
@@ -41,7 +45,7 @@ export default withAuth(async function handler(req, res) {
       classId: classId || null,
       dateOfBirth: dateOfBirth || null,
       userId,
-      parentId: null,
+      parentId: parentId || null,
       isIndependent: !!createAccount,
     });
     return res.status(201).json({ student });

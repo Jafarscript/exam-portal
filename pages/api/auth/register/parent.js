@@ -5,7 +5,7 @@ import { sendMail, templates } from '@/lib/mailer';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { email, password, fullName } = req.body || {};
+  const { email, password, fullName, phoneNumber, childrenNote } = req.body || {};
   if (!email || !password || !fullName) {
     return res.status(400).json({ error: 'Name, email and password are required' });
   }
@@ -23,12 +23,18 @@ export default async function handler(req, res) {
     role: 'PARENT',
     fullName,
     status: 'PENDING',
+    phoneNumber: (phoneNumber || '').trim(),
+    childrenNote: (childrenNote || '').trim(),
   });
 
   sendMail({ to: user.email, subject: 'Registration received', html: templates.parentRegistrationReceived(fullName) });
   const teacher = await User.findOne({ role: 'TEACHER' });
   if (teacher) {
-    sendMail({ to: teacher.email, subject: 'New parent registration', html: templates.newParentForTeacher(fullName, user.email) });
+    sendMail({
+      to: teacher.email,
+      subject: 'New parent registration',
+      html: templates.newParentForTeacher(fullName, user.email, user.childrenNote),
+    });
   }
 
   return res.status(201).json({ message: 'Registration received. You will be notified once approved.' });

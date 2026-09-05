@@ -5,6 +5,7 @@ import Spinner from '@/components/Spinner';
 import EmptyState from '@/components/EmptyState';
 import { useRequireRole } from '@/hooks/useAuth';
 import { apiFetch } from '@/lib/apiClient';
+import { Award, ArrowRight, User } from 'lucide-react';
 
 export default function ParentOverview() {
   const user = useRequireRole(['PARENT']);
@@ -18,7 +19,23 @@ export default function ParentOverview() {
 
   return (
     <Layout>
-      <h1 className="font-display text-3xl font-semibold text-primary-800 mb-6">Welcome, {user.fullName}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-primary-800">Welcome, {user.fullName}</h1>
+          <p className="text-xs sm:text-sm text-ink/60 mt-0.5">Parent and Guardian Portal</p>
+        </div>
+
+        {children && children.length > 0 && (
+          <Link
+            href="/parent/report-card"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-800 hover:bg-primary-900 text-white text-xs sm:text-sm font-semibold shadow-xs transition self-start sm:self-auto"
+          >
+            <Award className="w-4 h-4 text-gold-400" />
+            <span>View Children's Report Card</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
+      </div>
       {children === null && <Spinner />}
       {children && children.length === 0 && (
         <EmptyState

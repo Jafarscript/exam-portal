@@ -13,6 +13,8 @@ const UserSchema = new mongoose.Schema(
       enum: ['PENDING', 'APPROVED', 'REJECTED', 'ACTIVE'],
       default: 'ACTIVE',
     },
+    phoneNumber: { type: String, default: '' },
+    childrenNote: { type: String, default: '' },
     resetToken: { type: String, select: false },
     resetTokenExpires: { type: Date, select: false },
   },

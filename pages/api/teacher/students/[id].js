@@ -8,10 +8,11 @@ export default withAuth(async function handler(req, res) {
   if (!student) return res.status(404).json({ error: 'Student not found' });
 
   if (req.method === 'PATCH') {
-    const { fullName, classId, dateOfBirth } = req.body || {};
+    const { fullName, classId, dateOfBirth, parentId } = req.body || {};
     if (fullName !== undefined) student.fullName = fullName;
     if (classId !== undefined) student.classId = classId || null;
     if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth || null;
+    if (parentId !== undefined) student.parentId = parentId || null;
     await student.save();
     return res.status(200).json({ student });
   }
